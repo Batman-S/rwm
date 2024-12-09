@@ -3,11 +3,11 @@ from pymongo.collection import Collection
 from pymongo.errors import PyMongoError
 from app.config import settings
 import logging
-from typing import Optional
+from typing import Optional, AsyncGenerator
 
 logger = logging.getLogger("DB")
 
-class MongoDB:
+class MongoDBManager:
     def __init__(self, uri: str, db_name: str):
         self._uri = uri
         self._db_name = db_name
@@ -18,7 +18,7 @@ class MongoDB:
         try:
             self._client = AsyncIOMotorClient(self._uri)
             self._db = self._client[self._db_name]
-            logger.info(f"Connected {self._uri}, Database: {self._db_name}")
+            logger.info(f"Connected to {self._uri}, Database: {self._db_name}")
         except Exception as e:
             logger.error(f"Failed to connect to DB: {str(e)}")
             raise RuntimeError("Failed to connect to DB") from e
@@ -33,15 +33,15 @@ class MongoDB:
             raise RuntimeError("Database is not initialized")
         return self._db[name]
 
-    async def safe_query(self, query_func):
-        """
-        Wrapper to execute queries with error handling.
-        """
-        try:
-            result = await query_func()
-            return result
-        except PyMongoError as e:
-            logger.error(f"MongoDB query failed: {str(e)}")
-            raise RuntimeError("Database query failed.") from e
+db_manager = MongoDBManager(uri=settings.MONGO_URI, db_name=settings.DB_NAME)
 
-mongo = MongoDB(uri=settings.MONGO_URI, db_name=settings.DB_NAME)
+# Dependency injections
+async def get_mongo_client() -> AsyncGenerator[AsyncIOMotorClient, None]:
+    await db_manager.connect()
+    try:
+        yield db_manager._client
+    finally:
+        await db_manager.close()
+
+async def get_collection(collection_name: str) -> Collection:
+    return db_manager.get_collection(collection_name)

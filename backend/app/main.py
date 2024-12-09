@@ -1,6 +1,7 @@
 from fastapi import FastAPI
 from contextlib import asynccontextmanager
-from app.database import mongo
+from app.routes import api_router 
+from app.database import db_manager 
 import logging
 
 logging.basicConfig(
@@ -16,11 +17,11 @@ async def app_lifespan(app: FastAPI):
     """
     try:
         logger.info("Starting Waitlist Manager API...")
-        await mongo.connect()
+        await db_manager.connect()
         yield
     finally:
         logger.info("Shutting down Waitlist Manager API...")
-        await mongo.close()
+        await db_manager.close()
 
 app = FastAPI(
     title="Waitlist Manager API",
@@ -28,3 +29,5 @@ app = FastAPI(
     version="1.0.0",
     lifespan=app_lifespan,
 )
+
+app.include_router(api_router)
