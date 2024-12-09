@@ -1,3 +1,4 @@
+import os
 from pydantic_settings import BaseSettings
 
 class Settings(BaseSettings):
@@ -5,6 +6,6 @@ class Settings(BaseSettings):
     DB_NAME: str
 
     class Config:
-        env_file = ".env"  
+         env_file = ".env" if os.getenv("ENV") != "test" else ".env.test"
 
 settings = Settings()
