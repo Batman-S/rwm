@@ -1,7 +1,7 @@
 // /src/services/waitlistService.ts
 import { apiClient } from "../components/api/apiClient";
 
-interface WaitlistParty {
+export interface WaitlistParty {
   _id?: string;
   name: string;
   partySize: number;
@@ -9,6 +9,38 @@ interface WaitlistParty {
 }
 
 class WaitlistService {
+  private pollingIntervalId: NodeJS.Timeout | null = null;
+
+  startPolling(
+    interval: number,
+    onDataReceived: (data: WaitlistParty[]) => void,
+    onError: (error: Error) => void
+  ) {
+    if (this.pollingIntervalId) {
+      // If polling is already active, clear the previous interval
+      clearInterval(this.pollingIntervalId);
+    }
+
+    const fetchData = async () => {
+      try {
+        const waitlistData = await this.getWaitlist();
+        onDataReceived(waitlistData);
+      } catch (error) {
+        onError(error as Error);
+      }
+    };
+
+    fetchData();
+    this.pollingIntervalId = setInterval(fetchData, interval);
+  }
+
+  stopPolling() {
+    if (this.pollingIntervalId) {
+      clearInterval(this.pollingIntervalId);
+      this.pollingIntervalId = null;
+    }
+  }
+
   async getWaitlist(): Promise<WaitlistParty[]> {
     try {
       const response = await apiClient.get<WaitlistParty[]>("/waitlist");

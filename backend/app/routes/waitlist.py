@@ -1,10 +1,11 @@
 from fastapi import APIRouter, Depends, HTTPException
 from pymongo.collection import Collection
 from bson import ObjectId
-from app.database import get_collection
+from app.database import get_waitlist_collection
 from app.schemas import WaitlistCreate, WaitlistResponse
 from app.models import waitlist_model
 import logging
+from typing import List
 
 router = APIRouter()
 logger = logging.getLogger("WaitlistRoutes")
@@ -12,13 +13,11 @@ logger = logging.getLogger("WaitlistRoutes")
 @router.post("/", response_model=WaitlistResponse, summary="Add to Waitlist")
 async def add_to_waitlist(
     party: WaitlistCreate,
-    collection: Collection = Depends(lambda: get_collection('waitlist')),
+    collection: Collection = Depends(get_waitlist_collection),
 ):
     try:
-        
         new_party = waitlist_model(name=party.name, party_size=party.party_size)
         result = await collection.insert_one(new_party)
-
         new_party["_id"] = str(result.inserted_id)
         logger.info(f"Party added to waitlist: {new_party['name']} ({new_party['party_size']})")
         return new_party
@@ -26,10 +25,23 @@ async def add_to_waitlist(
         logger.error(f"Failed to add party to waitlist: {str(e)}")
         raise HTTPException(status_code=500, detail="Failed to add party to waitlist.")
 
+
+
+@router.get("/", response_model=List[WaitlistResponse], summary="Retrieve all from Waitlist")
+async def get_waitlist(collection: Collection = Depends(get_waitlist_collection)):
+    try:
+        waitlist = await collection.find().to_list(10) 
+        for party in waitlist:
+            party["_id"] = str(party["_id"])
+        return waitlist
+    except Exception as e:
+        logger.error(f"Failed to retrieve waitlist: {str(e)}")
+        raise HTTPException(status_code=500, detail="Failed to retrieve waitlist.")
+
 @router.get("/{party_id}", response_model=WaitlistResponse, summary="Get Waitlist Entry")
 async def get_waitlist_entry(
     party_id: str,
-    collection: Collection = Depends(lambda: get_collection('waitlist')),
+    collection: Collection = Depends(get_waitlist_collection),
 ):
     try:
         entry = await collection.find_one({"_id": ObjectId(party_id)})
@@ -45,7 +57,7 @@ async def get_waitlist_entry(
 @router.delete("/{party_id}", summary="Remove Waitlist Entry")
 async def remove_waitlist_entry(
     party_id: str,
-    collection: Collection = Depends(lambda: get_collection('waitlist')),
+    collection: Collection = Depends(get_waitlist_collection),
 ):
     try:
         result = await collection.delete_one({"_id": ObjectId(party_id)})

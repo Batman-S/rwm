@@ -7,7 +7,7 @@ class WaitlistCreate(BaseModel):
     party_size: int = Field(..., gt=0, le=10)
 
 class WaitlistResponse(BaseModel):
-    id: Optional[str] = Field(None)
+    id: Optional[str] = Field(None, alias="_id")
     name: str = Field(...)
     party_size: int = Field(...)
     status: str = Field(...) 

@@ -1,22 +1,28 @@
 import React, { useState } from "react";
 import FormInput from "./Common/FormInput";
 import FormSubmit from "./Common/FormSubmit";
-interface WaitlistFormProps {
-  onSubmit: (party: { name: string; partySize: number }) => void;
-}
 
-const WaitlistForm = ({ onSubmit }: WaitlistFormProps) => {
+const WaitlistForm = () => {
   const [name, setName] = useState<string>("");
   const [partySize, setPartySize] = useState<number>(2);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!name) {
-      // handle alert
+    const formData = { name, party_size: partySize };
+    try {
+      const response = await fetch("http://localhost:8000/api/v1/waitlist", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(formData),
+      });
+      const newEntry = await response.json();
+      console.log("newEntry", newEntry);
+    } catch (err) {
+      console.error("Error submitting form:", err);
     }
-
-    onSubmit({ name, partySize });
   };
 
   return (
