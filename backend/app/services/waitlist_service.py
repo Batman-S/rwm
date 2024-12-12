@@ -15,6 +15,23 @@ class WaitlistService:
     Service layer for handling the waitlist workflow, including adding parties,
     checking readiness, and managing check-ins.
     """
+    
+    @staticmethod
+    async def get_party_status(user_id: str):
+        """
+        Retrieve the current status of a party in the waitlist by user_id.
+        """
+        try:
+            collection = await get_collection("waitlist")
+            party = await collection.find_one({"_id": user_id})
+            if not party:
+                return {"status": "na"}
+
+            return {"status": party["status"], "party": party}
+
+        except Exception as e:
+            logger.error(f"Error retrieving party status for user {user_id}: {e}")
+            raise HTTPException(status_code=500, detail="Internal server error")
 
     @staticmethod
     async def add_to_waitlist(name: str, party_size: int, user_id: str):
@@ -32,7 +49,6 @@ class WaitlistService:
             }
             await collection.insert_one(new_party)
             logger.info(f"Party added to waitlist: {new_party['name']} ({new_party['party_size']} people)")
-
             # Trigger readiness check outside of scheduler for immediate feedback alongside the periodic checks.
             await WaitlistService.check_queue_readiness()
 
@@ -58,11 +74,15 @@ class WaitlistService:
             redis_client = await get_redis_client()
             available_seats = int(await redis_client.get("available_seats") or 0)
             next_party = await collection.find_one({"status": "waiting"}, sort=[("created_at", 1)])
+            
+            if next_party and available_seats < next_party["party_size"]:
+                await WebSocketService.notify_party_status(next_party["_id"], next_party, "waiting")
+            
             if next_party and available_seats >= next_party["party_size"]:
                 # Mark the party as ready and notify
                 updated_party = await collection.find_one_and_update({"_id": next_party["_id"]},{"$set": {"status": "ready"}},return_document=True)
                 await redis_client.decrby("available_seats", next_party["party_size"])
-                await WebSocketService.notify_ready_party(next_party["_id"], updated_party)
+                await WebSocketService.notify_party_status(next_party["_id"], updated_party, "ready")
                 logger.info(f"Party {next_party['_id']} notified as ready.")
         except Exception as e:
             logger.error(f"Error during readiness check: {e}")
@@ -77,43 +97,17 @@ class WaitlistService:
         redis_client = await get_redis_client()
         collection = await get_collection("waitlist")
         try:
-            
-            party = await WaitlistService.fetch_and_validate_party(collection, user_id)
-            await WaitlistService.mark_party_checked_in(collection, user_id)
+            updated_party = await collection.find_one_and_update(
+            {"_id": user_id},
+            {"$set": {"status": "checked_in", "started_at": datetime.now(timezone.utc).isoformat()}}, return_document=True)
+            await WebSocketService.notify_party_status(user_id,updated_party,"checked_in")
             return {"message": "Party checked in successfully"}
         
         except Exception as e:
             logger.error(f"Error during check-in for party {user_id}: {e}")
             raise HTTPException(status_code=500, detail="Internal server error")
         finally:
-            asyncio.create_task(WaitlistService.simulate_service(collection, redis_client, party))
-            
-
-    @staticmethod
-    async def fetch_and_validate_party(collection, user_id: str):
-        """
-        Fetch the party from the waitlist and validate check-in readiness.
-        """
-        party = await collection.find_one({"_id": user_id})
-        if not party:
-            logger.error(f"Party {user_id} not found.")
-            raise HTTPException(status_code=404, detail="Party not found.")
-        if party["status"] != "ready":
-            logger.error(f"Party {user_id} is not ready for check-in.")
-            raise HTTPException(status_code=400, detail="Party is not ready for check-in.")
-        logger.info(f"Party {user_id} validated for check-in.")
-        return party
-
-    @staticmethod
-    async def mark_party_checked_in(collection, party_id: str):
-        """
-        Update the party's status to 'checked_in' and record the start time.
-        """
-        await collection.update_one(
-            {"_id": party_id},
-            {"$set": {"status": "checked_in", "started_at": datetime.now(timezone.utc).isoformat()}},
-        )
-        logger.info(f"Party {party_id} marked as checked in.")
+            asyncio.create_task(WaitlistService.simulate_service(collection, redis_client, updated_party))
 
     @staticmethod
     async def simulate_service(collection, redis_client, party: dict):
@@ -126,7 +120,9 @@ class WaitlistService:
             await asyncio.sleep(settings.SERVICE_TIME_PER_PERSON * party["party_size"])
 
             # Mark the party as completed
-            await collection.update_one({"_id": party["_id"]}, {"$set": {"status": "completed", "completed_at": datetime.now(timezone.utc).isoformat()}})
+            updated_party = await collection.find_one_and_update({"_id": party["_id"]}, {"$set": {"status": "completed", "completed_at": datetime.now(timezone.utc).isoformat()}}, return_document=True)
+            await WebSocketService.notify_party_status(party["_id"], updated_party, "completed")
+            
             logger.info(f"Party {party['_id']} service completed.")
 
             lock_acquired = await SeatManagementService.acquire_seats_lock(redis_client)

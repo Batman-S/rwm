@@ -1,4 +1,5 @@
 import { apiClient } from "../components/api/apiClient";
+import { PartyStatus } from "../recoil/store";
 export interface WaitlistParty {
   _id?: string;
   userId: string;
@@ -40,6 +41,12 @@ class WaitlistService {
       console.error("Failed to check in party:", error);
       throw new Error("Could not check in party");
     }
+  }
+  async getStatus(userId: string) {
+    const response = await apiClient.get<PartyStatus>(
+      `/waitlist/${userId}/status`
+    );
+    return response.data;
   }
 }
 

@@ -3,17 +3,12 @@ import FormInput from "./Common/FormInput";
 import Button from "./Common/Button";
 import { API_BASE_URL } from "../config/config";
 import { useRecoilValue } from "recoil";
-import { userIdState } from "../recoil/atoms";
-import { useWebSocket } from "../contexts/WebSocketContext";
-import { useNavigate } from "react-router-dom";
-import { useEffect } from "react";
+import { userIdState } from "../recoil/store";
 
 const WaitlistForm = () => {
   const [name, setName] = useState<string>("");
   const [partySize, setPartySize] = useState<number>(2);
   const userId = useRecoilValue(userIdState);
-  const navigate = useNavigate();
-  const { globalUpdates } = useWebSocket();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -33,14 +28,6 @@ const WaitlistForm = () => {
       console.error("Error submitting form:", err);
     }
   };
-
-  useEffect(() => {
-    console.log("globalUpdates", globalUpdates);
-    if (!globalUpdates) return;
-    if (globalUpdates?.status === "ready") {
-      navigate("/check-in");
-    }
-  }, [globalUpdates]);
 
   return (
     <div className="flex flex-col gap-4">

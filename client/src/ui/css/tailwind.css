@@ -601,6 +601,10 @@ video {
   display: flex;
 }
 
+.contents {
+  display: contents;
+}
+
 .h-16 {
   height: 4rem;
 }
@@ -730,6 +734,16 @@ video {
   line-height: 1.75rem;
 }
 
+.text-sm {
+  font-size: 0.875rem;
+  line-height: 1.25rem;
+}
+
+.text-lg {
+  font-size: 1.125rem;
+  line-height: 1.75rem;
+}
+
 .font-bold {
   font-weight: 700;
 }
@@ -741,6 +755,11 @@ video {
 .text-white {
   --tw-text-opacity: 1;
   color: rgb(255 255 255 / var(--tw-text-opacity, 1));
+}
+
+.text-purple-primary {
+  --tw-text-opacity: 1;
+  color: rgb(92 17 166 / var(--tw-text-opacity, 1));
 }
 
 .shadow-md {

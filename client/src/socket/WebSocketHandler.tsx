@@ -1,19 +1,8 @@
-// src/contexts/WebSocketContext.tsx
-import {
-  createContext,
-  useContext,
-  useEffect,
-  useState,
-  ReactNode,
-} from "react";
+import { useEffect } from "react";
 import { io } from "socket.io-client";
-import { userIdState } from "../recoil/atoms";
-import { useRecoilValue } from "recoil";
+import { partyStatus, userIdState } from "../recoil/store";
+import { useRecoilValue, useSetRecoilState } from "recoil";
 import { API_BASE_WS_URL } from "../config/config";
-
-interface WebSocketContextValue {
-  globalUpdates: { status: string } | null;
-}
 
 export interface Party {
   _id: string;
@@ -28,15 +17,9 @@ export interface Message {
   party: Party;
 }
 
-const WebSocketContext = createContext<WebSocketContextValue | undefined>(
-  undefined
-);
-
-export const WebSocketProvider = ({ children }: { children: ReactNode }) => {
-  const [globalUpdates, setGlobalUpdates] = useState<{
-    status: string;
-  } | null>(null);
+export const WebSocketHandler = () => {
   const userId = useRecoilValue(userIdState);
+  const setPartyStatus = useSetRecoilState(partyStatus);
   useEffect(() => {
     const socketInstance = io(`${API_BASE_WS_URL}`, {
       query: { userId },
@@ -55,7 +38,8 @@ export const WebSocketProvider = ({ children }: { children: ReactNode }) => {
     socketInstance.on("user_message", (message: Message) => {
       console.log("Message received:", message);
       if (message.party._id === userId) {
-        setGlobalUpdates({ status: message.status });
+        setPartyStatus(message.party.status);
+        console.log("Setting party status", message.party.status);
       }
     });
 
@@ -66,19 +50,7 @@ export const WebSocketProvider = ({ children }: { children: ReactNode }) => {
     return () => {
       socketInstance.disconnect();
     };
-  }, [userId]);
+  }, [userId, setPartyStatus]);
 
-  return (
-    <WebSocketContext.Provider value={{ globalUpdates }}>
-      {children}
-    </WebSocketContext.Provider>
-  );
-};
-
-export const useWebSocket = () => {
-  const context = useContext(WebSocketContext);
-  if (!context) {
-    throw new Error("useWebSocket must be used within a WebSocketProvider");
-  }
-  return context;
+  return null;
 };

@@ -1,18 +1,14 @@
 import Button from "./Common/Button";
 import { useRecoilValue } from "recoil";
-import { userIdState } from "../recoil/atoms";
+import { userIdState } from "../recoil/store";
 import { waitlistService } from "../services/waitlistService";
-import { useNavigate } from "react-router-dom";
 const CheckIn = () => {
   const userId = useRecoilValue(userIdState);
-  const navigate = useNavigate()
   const handleCheckIn = async () => {
     try {
       await waitlistService.checkInParty(userId);
-      navigate('/completed')
     } catch (error) {
       console.error("Failed to check in party:", error);
-      throw new Error("Could not check in party");
     }
   };
   return (

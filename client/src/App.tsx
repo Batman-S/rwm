@@ -1,26 +1,17 @@
-import { WebSocketProvider } from "./contexts/WebSocketContext";
+import { WebSocketHandler } from "./socket/WebSocketHandler";
 import "./ui/css/tailwind.css";
 import Layout from "./components/Common/Layout";
-import { BrowserRouter as Router, Route, Routes } from "react-router-dom";
-import { RecoilRoot } from "recoil";
-import WaitlistForm from "./components/WaitlistForm";
-import CheckIn from "./components/CheckIn";
-import Completed from "./components/Completed";
+import { BrowserRouter as Router } from "react-router-dom";
+
+import AppRoutes from "./routes/AppRoutes";
 
 function App() {
   return (
     <Router>
-      <RecoilRoot>
-        <WebSocketProvider>
-          <Layout>
-            <Routes>
-              <Route path="/" element={<WaitlistForm />} />
-              <Route path="/check-in" element={<CheckIn />} />
-              <Route path="/completed" element={<Completed />} />
-            </Routes>
-          </Layout>
-        </WebSocketProvider>
-      </RecoilRoot>
+      <WebSocketHandler />
+      <Layout>
+        <AppRoutes />
+      </Layout>
     </Router>
   );
 }

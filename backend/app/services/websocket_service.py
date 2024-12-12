@@ -10,13 +10,13 @@ class WebSocketService:
     Service layer for WebSocket interactions.
     """
     @staticmethod
-    async def notify_ready_party(user_id: str, party: Dict):
+    async def notify_party_status(user_id: str, party: Dict, status: str):
         """
-        Notify a specific party that they are ready to be seated.
+        Notify a specific party of their waitlist status.
         """
         try:
-            message = {"status": "ready", "party": party}
-            logger.info(f"Notifying party ready {user_id} with message: {message}")
+            message = {"status": status, "party": party}
+            logger.info(f"Notifying party {user_id}. Status: {status}")
             
             from app.main import sio
             await websocket_manager.send_to_user(sio=sio, user_id=user_id, message=message)
