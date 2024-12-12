@@ -41,6 +41,3 @@ db_manager = MongoDBManager(uri=settings.MONGO_URI, db_name=settings.DB_NAME)
 # Dependency injections
 async def get_collection(collection_name: str) -> Collection:
     return db_manager.get_collection(collection_name)
-
-async def get_waitlist_collection() -> Collection:
-    return await get_collection("waitlist")

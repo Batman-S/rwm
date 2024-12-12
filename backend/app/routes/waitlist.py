@@ -1,71 +1,12 @@
-from fastapi import APIRouter, Depends, HTTPException
-from pymongo.collection import Collection
-from bson import ObjectId
-from app.database import get_waitlist_collection
-from app.schemas import WaitlistCreate, WaitlistResponse
-from app.models import waitlist_model
-import logging
-from typing import List
+from fastapi import APIRouter, Body
+from app.services.waitlist_service import WaitlistService
 
 router = APIRouter()
-logger = logging.getLogger("WaitlistRoutes")
 
-@router.post("/", response_model=WaitlistResponse, summary="Add to Waitlist")
-async def add_to_waitlist(
-    party: WaitlistCreate,
-    collection: Collection = Depends(get_waitlist_collection),
-):
-    try:
-        new_party = waitlist_model(name=party.name, party_size=party.party_size)
-        result = await collection.insert_one(new_party)
-        new_party["_id"] = str(result.inserted_id)
-        logger.info(f"Party added to waitlist: {new_party['name']} ({new_party['party_size']})")
-        return new_party
-    except Exception as e:
-        logger.error(f"Failed to add party to waitlist: {str(e)}")
-        raise HTTPException(status_code=500, detail="Failed to add party to waitlist.")
+@router.post("/waitlist")
+async def add_party_to_waitlist(name: str = Body(...), party_size: int = Body(...), user_id: str = Body(...)):
+    return await WaitlistService.add_to_waitlist(name, party_size, user_id)
 
-
-
-@router.get("/", response_model=List[WaitlistResponse], summary="Retrieve all from Waitlist")
-async def get_waitlist(collection: Collection = Depends(get_waitlist_collection)):
-    try:
-        waitlist = await collection.find().to_list(10) 
-        for party in waitlist:
-            party["_id"] = str(party["_id"])
-        return waitlist
-    except Exception as e:
-        logger.error(f"Failed to retrieve waitlist: {str(e)}")
-        raise HTTPException(status_code=500, detail="Failed to retrieve waitlist.")
-
-@router.get("/{party_id}", response_model=WaitlistResponse, summary="Get Waitlist Entry")
-async def get_waitlist_entry(
-    party_id: str,
-    collection: Collection = Depends(get_waitlist_collection),
-):
-    try:
-        entry = await collection.find_one({"_id": ObjectId(party_id)})
-        if not entry:
-            raise HTTPException(status_code=404, detail="Waitlist entry not found.")
-        
-        entry["_id"] = str(entry["_id"])
-        return entry
-    except Exception as e:
-        logger.error(f"Failed to retrieve waitlist entry: {str(e)}")
-        raise HTTPException(status_code=500, detail="Failed to retrieve waitlist entry.")
-
-@router.delete("/{party_id}", summary="Remove Waitlist Entry")
-async def remove_waitlist_entry(
-    party_id: str,
-    collection: Collection = Depends(get_waitlist_collection),
-):
-    try:
-        result = await collection.delete_one({"_id": ObjectId(party_id)})
-        if result.deleted_count == 0:
-            raise HTTPException(status_code=404, detail="Waitlist entry not found.")
-
-        logger.info(f"Waitlist entry with ID {party_id} removed.")
-        return {"message": "Waitlist entry removed successfully."}
-    except Exception as e:
-        logger.error(f"Failed to remove waitlist entry: {str(e)}")
-        raise HTTPException(status_code=500, detail="Failed to remove waitlist entry.")
+@router.post("/waitlist/{party_id}/check-in")
+async def check_in(user_id: str):
+    return await WaitlistService.check_in_party(user_id)
