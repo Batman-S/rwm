@@ -1,6 +1,5 @@
 from typing import Dict, List
 import logging
-
 logger = logging.getLogger("WebSocketManager")
 
 class WebSocketManager:

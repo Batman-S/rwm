@@ -1,54 +1,18 @@
-// /src/services/waitlistService.ts
 import { apiClient } from "../components/api/apiClient";
-
 export interface WaitlistParty {
   _id?: string;
+  userId: string;
   name: string;
   partySize: number;
+  status: string;
   timestamp: string;
 }
 
 class WaitlistService {
-  private pollingIntervalId: NodeJS.Timeout | null = null;
-
-  startPolling(
-    interval: number,
-    onDataReceived: (data: WaitlistParty[]) => void,
-    onError: (error: Error) => void
-  ) {
-    if (this.pollingIntervalId) {
-      // If polling is already active, clear the previous interval
-      clearInterval(this.pollingIntervalId);
-    }
-
-    const fetchData = async () => {
-      try {
-        const waitlistData = await this.getWaitlist();
-        onDataReceived(waitlistData);
-      } catch (error) {
-        onError(error as Error);
-      }
-    };
-
-    fetchData();
-    this.pollingIntervalId = setInterval(fetchData, interval);
-  }
-
-  stopPolling() {
-    if (this.pollingIntervalId) {
-      clearInterval(this.pollingIntervalId);
-      this.pollingIntervalId = null;
-    }
-  }
-
   async getWaitlist(): Promise<WaitlistParty[]> {
     try {
       const response = await apiClient.get<WaitlistParty[]>("/waitlist");
-      const sortedData = response.data.sort(
-        (a, b) =>
-          new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
-      );
-      return sortedData;
+      return response.data;
     } catch (error) {
       console.error("Failed to fetch waitlist:", error);
       throw new Error("Could not fetch waitlist");
@@ -69,13 +33,12 @@ class WaitlistService {
     }
   }
 
-  async removeFromWaitlist(id: string): Promise<WaitlistParty> {
+  async checkInParty(userId: string): Promise<void> {
     try {
-      const response = await apiClient.delete<WaitlistParty>(`/waitlist/${id}`);
-      return response.data;
+      await apiClient.post(`/waitlist/${userId}/check-in`);
     } catch (error) {
-      console.error("Failed to remove party from waitlist:", error);
-      throw new Error("Could not remove from waitlist");
+      console.error("Failed to check in party:", error);
+      throw new Error("Could not check in party");
     }
   }
 }

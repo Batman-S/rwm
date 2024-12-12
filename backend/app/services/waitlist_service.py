@@ -4,10 +4,9 @@ from app.config import settings
 from app.services.websocket_service import WebSocketService
 from app.services.seat_management_service import SeatManagementService
 from fastapi import HTTPException
-from datetime import datetime
+from datetime import datetime, timezone
 import asyncio
 import logging
-
 logger = logging.getLogger("WaitlistService")
 
 
@@ -25,18 +24,16 @@ class WaitlistService:
         try:
             collection = await get_collection("waitlist")
             new_party = {
+                "_id": user_id,
                 "name": name,
-                "user_id": user_id,
                 "party_size": party_size,
                 "status": "waiting",
-                "created_at": datetime.utcnow(),
+                "created_at": datetime.now(timezone.utc).isoformat(),
             }
-            result = await collection.insert_one(new_party)
-            new_party["_id"] = str(result.inserted_id)
-
+            await collection.insert_one(new_party)
             logger.info(f"Party added to waitlist: {new_party['name']} ({new_party['party_size']} people)")
 
-            # Trigger readiness check outside of scheduler for immediate feedback alongside the periodic checks
+            # Trigger readiness check outside of scheduler for immediate feedback alongside the periodic checks.
             await WaitlistService.check_queue_readiness()
 
             return {"message": "Party added to the waitlist.", "party": new_party}
@@ -60,13 +57,12 @@ class WaitlistService:
             collection = await get_collection("waitlist")
             redis_client = await get_redis_client()
             available_seats = int(await redis_client.get("available_seats") or 0)
-            # Find next party            
             next_party = await collection.find_one({"status": "waiting"}, sort=[("created_at", 1)])
             if next_party and available_seats >= next_party["party_size"]:
                 # Mark the party as ready and notify
-                await collection.update_one({"_id": next_party["_id"]}, {"$set": {"status": "ready"}})
+                updated_party = await collection.find_one_and_update({"_id": next_party["_id"]},{"$set": {"status": "ready"}},return_document=True)
                 await redis_client.decrby("available_seats", next_party["party_size"])
-                await WebSocketService.notify_ready_party(next_party["user_id"], next_party)
+                await WebSocketService.notify_ready_party(next_party["_id"], updated_party)
                 logger.info(f"Party {next_party['_id']} notified as ready.")
         except Exception as e:
             logger.error(f"Error during readiness check: {e}")
@@ -74,47 +70,38 @@ class WaitlistService:
             await SeatManagementService.release_seats_lock(redis_client)
 
     @staticmethod
-    async def check_in_party(party_id: str):
+    async def check_in_party(user_id: str):
         """
         Check in a party, update seats, and start the service.
         """
         redis_client = await get_redis_client()
         collection = await get_collection("waitlist")
-
-        lock_acquired = await SeatManagementService.acquire_seats_lock(redis_client)
-        if not lock_acquired:
-            raise HTTPException(status_code=429, detail="Seats are being updated. Try again shortly.")
-
         try:
             
-            party = await WaitlistService.fetch_and_validate_party(collection, party_id)
-           
-            await WaitlistService.mark_party_checked_in(collection, party_id)
-            await SeatManagementService.decrement_available_seats(redis_client, party["party_size"])
-            await WebSocketService.notify_seat_update(int(await redis_client.get("available_seats")))
-            await WaitlistService.simulate_service(collection, redis_client, party)
-
-            return {"message": "Service completed successfully."}
+            party = await WaitlistService.fetch_and_validate_party(collection, user_id)
+            await WaitlistService.mark_party_checked_in(collection, user_id)
+            return {"message": "Party checked in successfully"}
         
         except Exception as e:
-            logger.error(f"Error during check-in for party {party_id}: {e}")
+            logger.error(f"Error during check-in for party {user_id}: {e}")
             raise HTTPException(status_code=500, detail="Internal server error")
         finally:
-            await SeatManagementService.release_seats_lock(redis_client)
+            asyncio.create_task(WaitlistService.simulate_service(collection, redis_client, party))
+            
 
     @staticmethod
-    async def fetch_and_validate_party(collection, party_id: str):
+    async def fetch_and_validate_party(collection, user_id: str):
         """
         Fetch the party from the waitlist and validate check-in readiness.
         """
-        party = await collection.find_one({"_id": party_id})
+        party = await collection.find_one({"_id": user_id})
         if not party:
-            logger.error(f"Party {party_id} not found.")
+            logger.error(f"Party {user_id} not found.")
             raise HTTPException(status_code=404, detail="Party not found.")
         if party["status"] != "ready":
-            logger.error(f"Party {party_id} is not ready for check-in.")
+            logger.error(f"Party {user_id} is not ready for check-in.")
             raise HTTPException(status_code=400, detail="Party is not ready for check-in.")
-        logger.info(f"Party {party_id} validated for check-in.")
+        logger.info(f"Party {user_id} validated for check-in.")
         return party
 
     @staticmethod
@@ -124,7 +111,7 @@ class WaitlistService:
         """
         await collection.update_one(
             {"_id": party_id},
-            {"$set": {"status": "checked_in", "started_at": datetime.utcnow()}},
+            {"$set": {"status": "checked_in", "started_at": datetime.now(timezone.utc).isoformat()}},
         )
         logger.info(f"Party {party_id} marked as checked in.")
 
@@ -134,11 +121,26 @@ class WaitlistService:
         Simulate the service process and update the party's status after completion.
         """
         logger.info(f"Simulating service for party {party['_id']} ({party['party_size']} people).")
-        await asyncio.sleep(settings.SERVICE_TIME_PER_PERSON * party["party_size"])
+        try:
+            # Simulate service duration
+            await asyncio.sleep(settings.SERVICE_TIME_PER_PERSON * party["party_size"])
 
-        # Mark the party as completed
-        await collection.update_one({"_id": party["_id"]}, {"$set": {"status": "completed"}})
-        logger.info(f"Party {party['_id']} service completed.")
+            # Mark the party as completed
+            await collection.update_one({"_id": party["_id"]}, {"$set": {"status": "completed", "completed_at": datetime.now(timezone.utc).isoformat()}})
+            logger.info(f"Party {party['_id']} service completed.")
 
-        # Update available seats
-        await SeatManagementService.increment_available_seats(redis_client, party["party_size"])
+            lock_acquired = await SeatManagementService.acquire_seats_lock(redis_client)
+            if not lock_acquired:
+                logger.error("Failed to acquire lock during simulate_service for seat update.")
+                raise HTTPException(status_code=429, detail="Seats are being updated. Try again shortly.")
+
+            try:
+                await SeatManagementService.increment_available_seats(redis_client, party["party_size"])
+                logger.info(f"Seats updated after party {party['_id']} service.")
+            finally:
+                await SeatManagementService.release_seats_lock(redis_client)
+
+        except Exception as e:
+            logger.error(f"Error during simulate_service for party {party['_id']}: {e}")
+            raise HTTPException(status_code=500, detail="Internal server error")
+
