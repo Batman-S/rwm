@@ -72,7 +72,7 @@ class WaitlistService:
         try:
             collection = await get_collection("waitlist")
             redis_client = await get_redis_client()
-            available_seats = int(await redis_client.get("available_seats") or 0)
+            available_seats = await SeatManagementService.get_available_seats(redis_client)
             next_party = await collection.find_one({"status": "waiting"}, sort=[("created_at", 1)])
             
             if next_party and available_seats < next_party["party_size"]:
@@ -81,7 +81,7 @@ class WaitlistService:
             if next_party and available_seats >= next_party["party_size"]:
                 # Mark the party as ready and notify
                 updated_party = await collection.find_one_and_update({"_id": next_party["_id"]},{"$set": {"status": "ready"}},return_document=True)
-                await redis_client.decrby("available_seats", next_party["party_size"])
+                await SeatManagementService.decrement_available_seats(redis_client, next_party["party_size"])
                 await WebSocketService.notify_party_status(next_party["_id"], updated_party, "ready")
                 logger.info(f"Party {next_party['_id']} notified as ready.")
         except Exception as e:

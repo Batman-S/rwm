@@ -1,0 +1,47 @@
+services:
+  client:
+    build:
+      context: ./client  
+      dockerfile: Dockerfile
+    ports:
+      - "5173:5173" 
+    volumes:
+      - ./client/src:/app/src 
+      - ./client/public:/app/public  
+    environment:
+      - NODE_ENV=development 
+    depends_on:
+      - backend 
+  
+  backend:
+    build:
+      context: ./backend  
+      dockerfile: Dockerfile
+    ports:
+      - "8000:8000" 
+    volumes:
+      - ./backend:/app  
+    environment:
+      - PYTHON_ENV=development  
+    depends_on:
+      - mongo
+      - redis
+
+  
+  mongo:
+    image: mongo:latest
+    volumes:
+      - mongo-data:/data/db  
+    ports:
+      - "27018:27017"  
+    command: ["mongod", "--logpath", "/dev/null", "--quiet"]  
+
+  
+  redis:
+    image: redis:latest
+    ports:
+      - "6380:6379" 
+    command: ["redis-server", "--loglevel", "warning", "--logfile", "/dev/null"] 
+
+volumes:
+  mongo-data:

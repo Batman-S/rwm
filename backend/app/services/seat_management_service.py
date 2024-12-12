@@ -4,7 +4,6 @@ import logging
 
 logger = logging.getLogger("SeatManagement")
 
-
 class SeatManagementService:
     """
     Service layer for managing seat availability and concurrency locks.
