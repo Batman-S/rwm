@@ -3,6 +3,7 @@ from unittest.mock import AsyncMock, patch, ANY
 from datetime import datetime, timezone
 from app.services.waitlist_service import WaitlistService
 
+@pytest.mark.usefixtures("initialize_database")    
 @pytest.mark.asyncio
 async def test_add_to_waitlist(mock_db, patch_dependencies):
     user_id_1 = "test_user_1"
@@ -37,7 +38,7 @@ async def test_add_to_waitlist(mock_db, patch_dependencies):
     assert result["party_size"] == party_size_2
     assert result["status"] == "ready"
 
-
+@pytest.mark.usefixtures("initialize_database")    
 @pytest.mark.asyncio
 async def test_get_party_status(mock_db):
     user_id = "test_user_1"
@@ -55,6 +56,7 @@ async def test_get_party_status(mock_db):
     assert result["status"] == "waiting"
     assert result["party"]["_id"] == user_id
 
+@pytest.mark.usefixtures("initialize_database")    
 @pytest.mark.asyncio
 async def test_check_queue_readiness(mock_db, patch_dependencies):
     user_id_1 = "test_user_1"
@@ -92,6 +94,7 @@ async def test_check_queue_readiness(mock_db, patch_dependencies):
     party = await mock_db.find_one({"_id": user_id_2})
     assert party["status"] == "ready"
 
+@pytest.mark.usefixtures("initialize_database")    
 @pytest.mark.asyncio
 async def test_check_in_party(mock_db, patch_dependencies):
     user_id = "test_user_1"
@@ -114,7 +117,8 @@ async def test_check_in_party(mock_db, patch_dependencies):
         mock_simulate_service.assert_called_once_with(mock_db, ANY, party)
         notify_party_status = patch_dependencies["notify_party_status"]
         notify_party_status.assert_called_with(user_id, ANY, "checked_in")
-        
+  
+@pytest.mark.usefixtures("initialize_database")    
 @pytest.mark.asyncio
 async def test_simulate_service(mock_db, patch_dependencies):
     user_id = "test_user_1"

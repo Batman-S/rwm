@@ -45,7 +45,7 @@ class SeatManagementService:
         Decrement available seats by the party size.
         """
         try:
-            available_seats = int(await redis_client.get("available_seats") or 0)
+            available_seats = int(await redis_client.get("available_seats"))
             logger.info(f"Available seats before decrement: {available_seats}")
             if available_seats < party_size:
                 logger.warning(
@@ -77,7 +77,7 @@ class SeatManagementService:
         Retrieve the current number of available seats from Redis.
         """
         try:
-            available_seats = int(await redis_client.get("available_seats") or 0)
+            available_seats = int(await redis_client.get("available_seats"))
             logger.info(f"Retrieved available seats: {available_seats}")
             return available_seats
         except Exception as e:

@@ -8,6 +8,7 @@ from app.redis_client import get_redis_client
 from contextlib import asynccontextmanager
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 import logging
+import asyncio
 
 logging.basicConfig(
     level=logging.INFO,
@@ -28,9 +29,16 @@ def setup_scheduler():
         seconds=5,
         id="check_queue_readiness",
     )
+    loop = asyncio.get_event_loop()
+    if loop.is_running():
+        loop.create_task(start_scheduler()) 
+
+async def start_scheduler():
+    """
+    Starts the scheduler in an asyncio event loop
+    """
     scheduler.start()
     logger.info("Scheduler started with job: check_queue_readiness")
-
 
 @asynccontextmanager
 async def app_lifespan(app: FastAPI):
@@ -44,9 +52,8 @@ async def app_lifespan(app: FastAPI):
 
         # Initialize seats in Redis on app start. TODO: Save available seats to disk
         redis_client = await get_redis_client()
-        if await redis_client.get("available_seats") is None:
-            await redis_client.set("available_seats", 10)
-            logger.info("Initialized available_seats to 10 in Redis")
+        await redis_client.set("available_seats", 10)
+        logger.info("Initialized available_seats to 10 in Redis")
             
         setup_scheduler()
         yield

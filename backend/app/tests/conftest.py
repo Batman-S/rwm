@@ -3,7 +3,6 @@ import asyncio
 from app.database import db_manager
 from unittest.mock import AsyncMock, patch
 from dotenv import load_dotenv
-
 load_dotenv(".env.test")
 
 
@@ -13,18 +12,18 @@ def event_loop():
     yield loop
     loop.close()
 
-@pytest.fixture(scope="session", autouse=True)
+@pytest.fixture(scope="session")
 async def initialize_database():
     await db_manager.connect()
     assert db_manager._db is not None, "Database connection failed in fixture"
-    yield
+    yield db_manager
     await db_manager.close()
 
 @pytest.fixture(scope="function")
 async def mock_db():
     db = db_manager._db
     waitlist_collection = db.get_collection("waitlist")
-    await waitlist_collection.delete_many({})  
+    await waitlist_collection.delete_many({})
     yield waitlist_collection
     await waitlist_collection.delete_many({})
 

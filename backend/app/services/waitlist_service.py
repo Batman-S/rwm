@@ -49,13 +49,15 @@ class WaitlistService:
             }
             await collection.insert_one(new_party)
             logger.info(f"Party added to waitlist: {new_party['name']} ({new_party['party_size']} people)")
-            # Trigger readiness check outside of scheduler for immediate feedback alongside the periodic checks.
-            await WaitlistService.check_queue_readiness()
 
             return {"message": "Party added to the waitlist.", "party": new_party}
         except Exception as e:
             logger.error(f"Error adding party to waitlist: {e}")
             raise HTTPException(status_code=500, detail="Internal server error")
+        finally:
+            # Trigger readiness check outside of scheduler for immediate feedback alongside the periodic checks.
+            await WaitlistService.check_queue_readiness()
+            
 
     @staticmethod
     async def check_queue_readiness():
@@ -130,7 +132,6 @@ class WaitlistService:
                 raise HTTPException(status_code=429, detail="Seats are being updated. Try again shortly.")
             
             await SeatManagementService.increment_available_seats(redis_client, party["party_size"])
-            logger.info("INCREMENTING SEATS")
             logger.info(f"Seats updated after party {party['_id']} service.")
        
         except Exception as e:
