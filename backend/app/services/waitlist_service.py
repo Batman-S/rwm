@@ -74,7 +74,6 @@ class WaitlistService:
             redis_client = await get_redis_client()
             available_seats = await SeatManagementService.get_available_seats(redis_client)
             next_party = await collection.find_one({"status": "waiting"}, sort=[("created_at", 1)])
-            
             if next_party and available_seats < next_party["party_size"]:
                 await WebSocketService.notify_party_status(next_party["_id"], next_party, "waiting")
             
@@ -129,14 +128,17 @@ class WaitlistService:
             if not lock_acquired:
                 logger.error("Failed to acquire lock during simulate_service for seat update.")
                 raise HTTPException(status_code=429, detail="Seats are being updated. Try again shortly.")
-
-            try:
-                await SeatManagementService.increment_available_seats(redis_client, party["party_size"])
-                logger.info(f"Seats updated after party {party['_id']} service.")
-            finally:
-                await SeatManagementService.release_seats_lock(redis_client)
-
+            
+            await SeatManagementService.increment_available_seats(redis_client, party["party_size"])
+            logger.info("INCREMENTING SEATS")
+            logger.info(f"Seats updated after party {party['_id']} service.")
+       
         except Exception as e:
             logger.error(f"Error during simulate_service for party {party['_id']}: {e}")
             raise HTTPException(status_code=500, detail="Internal server error")
+        
+        finally:
+            await SeatManagementService.release_seats_lock(redis_client)
+
+        
 
