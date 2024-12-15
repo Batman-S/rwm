@@ -20,9 +20,9 @@ class WaitlistService {
     }
   }
 
-  async addToWaitlist(name: string, partySize: number): Promise<WaitlistParty> {
+  async addToWaitlist(name: string, partySize: number, userId: string): Promise<WaitlistParty> {
     try {
-      const payload = { name, partySize };
+      const payload = { name, party_size: partySize, user_id: userId };
       const response = await apiClient.post<WaitlistParty>(
         "/waitlist",
         payload

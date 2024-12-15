@@ -5,11 +5,7 @@ import { waitlistService } from "../services/waitlistService";
 const CheckIn = () => {
   const userId = useRecoilValue(userIdState);
   const handleCheckIn = async () => {
-    try {
-      await waitlistService.checkInParty(userId);
-    } catch (error) {
-      console.error("Failed to check in party:", error);
-    }
+    await waitlistService.checkInParty(userId);
   };
   return (
     <div className="flex flex-col gap-4">
