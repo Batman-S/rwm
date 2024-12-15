@@ -24,6 +24,8 @@ To start the entire project, including the frontend, backend, and required servi
    - Bind the backend to the default Unicorn host string (e.g., `127.0.0.1:8000`).
    - Bind the frontend to the default development port (e.g., `http://localhost:5173`).
 
+4. Access the app at `http://localhost:5173`
+
 ### **2. Running Tests**
 #### Backend Tests
 1. Navigate to the backend folder:
