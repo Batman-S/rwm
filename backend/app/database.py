@@ -1,9 +1,8 @@
 from motor.motor_asyncio import AsyncIOMotorClient
 from pymongo.collection import Collection
-from pymongo.errors import PyMongoError
 from app.config import settings
 import logging
-from typing import Optional, AsyncGenerator
+from typing import Optional
 
 logger = logging.getLogger("DB")
 

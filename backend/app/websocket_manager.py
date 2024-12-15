@@ -4,7 +4,8 @@ logger = logging.getLogger("WebSocketManager")
 
 class WebSocketManager:
     def __init__(self):
-        self.user_connections: Dict[str, List[str]] = {} # Stores list of SIDs
+        # Stores list of SIDs
+        self.user_connections: Dict[str, List[str]] = {} 
 
     async def save_user_connection(self, sio, sid: str, user_id: str):
         """

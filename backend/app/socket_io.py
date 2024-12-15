@@ -18,7 +18,7 @@ async def setup_socketio_events(sio):
 
         if not user_id:
             logger.error("Connection rejected: Missing user_id in query params.")
-            return False # Will reject connection is user_id missing
+            return False
 
         logger.info(f"Socket.IO client connected: SID={sid}, User ID={user_id}")
         await websocket_manager.save_user_connection(sio, sid, user_id)
