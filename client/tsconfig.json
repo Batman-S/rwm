@@ -1,4 +1,15 @@
 {
+  "compilerOptions": {
+    "jsx": "react-jsx",
+    "types": ["@testing-library/jest-dom", "node"],
+    "module": "ES2022",
+    "target": "es6",
+    "moduleResolution": "node",
+    "strict": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true
+
+  },
   "files": [],
   "references": [
     { "path": "./tsconfig.app.json" },

@@ -24,8 +24,6 @@ const StatusRouter = () => {
 
   useEffect(() => {
     const route = getRouteForStatus(status);
-    console.log("status", status);
-    console.log("route", route);
     if (route !== window.location.pathname) {
       navigate(route);
       return;

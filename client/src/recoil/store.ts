@@ -39,11 +39,6 @@ export const partyStatusSelector = selector<Promise<PartyStatus | null>>({
       return null;
     }
   },
-  set: ({ set }, newValue) => {
-    if (typeof newValue === "string" || newValue === null) {
-      set(partyStatus, newValue);
-    }
-  },
 });
 
 export const userIdState = atom<string>({
