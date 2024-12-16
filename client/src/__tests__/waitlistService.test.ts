@@ -2,7 +2,6 @@ import { apiClient } from "../components/api/apiClient";
 import { waitlistService } from "../services/waitlistService";
 import { vi, describe, it, expect, Mock, afterEach } from "vitest";
 
-
 vi.mock("../config/config.ts", () => ({
   apiBaseUrl: "http://localhost:8000/api/v1",
   wsBaseUrl: "ws://localhost:8000",
@@ -17,7 +16,7 @@ vi.mock("../components/api/apiClient", () => ({
 
 describe("WaitlistService", () => {
   afterEach(() => {
-    vi.clearAllMocks(); 
+    vi.clearAllMocks();
   });
 
   it("should fetch the list of waitlist parties", async () => {
@@ -50,12 +49,12 @@ describe("WaitlistService", () => {
   });
 
   it("should add a party to the waitlist", async () => {
-    const payload = { name: "Test Party 3", partySize: 3 };
+    const payload = { name: "Test Party 3", party_size: 3, user_id: "user_3" };
     const mockResponse = {
       _id: "3",
-      userId: "user_3",
+      user_id: "user_3",
       name: "Test Party 3",
-      partySize: 3,
+      party_size: 3,
       status: "waiting",
       timestamp: "2024-12-13T02:00:00",
     };
@@ -64,7 +63,8 @@ describe("WaitlistService", () => {
 
     const result = await waitlistService.addToWaitlist(
       payload.name,
-      payload.partySize
+      payload.party_size,
+      payload.user_id
     );
 
     expect(result).toEqual(mockResponse);

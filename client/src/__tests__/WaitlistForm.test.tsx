@@ -2,16 +2,8 @@ import { render, screen, fireEvent } from "@testing-library/react";
 import { RecoilRoot } from "recoil";
 import { userIdState } from "../recoil/store";
 import WaitlistForm from "../components/WaitlistForm";
-import { API_BASE_URL } from "../config/config";
-import { vi, describe, it, expect, Mock, beforeEach, afterEach } from "vitest";
-
-beforeEach(() => {
-  vi.stubGlobal("fetch", vi.fn());
-});
-
-afterEach(() => {
-  vi.unstubAllGlobals();
-});
+import { vi, describe, it, expect } from "vitest";
+import { WaitlistParty, waitlistService } from "../services/waitlistService";
 
 describe("WaitlistForm Component", () => {
   const mockUserId = "mock-user-id";
@@ -26,10 +18,6 @@ describe("WaitlistForm Component", () => {
       </RecoilRoot>
     );
   };
-
-  beforeEach(() => {
-    vi.clearAllMocks();
-  });
 
   it("renders form with default values", () => {
     renderWithRecoil(<WaitlistForm />);
@@ -46,7 +34,7 @@ describe("WaitlistForm Component", () => {
     const nameInput = screen.getByLabelText("Name");
     const partySizeInput = screen.getByLabelText("Party Size");
 
-    fireEvent.change(nameInput, {target: {value: "Tokugawa"}})
+    fireEvent.change(nameInput, { target: { value: "Tokugawa" } });
     fireEvent.change(partySizeInput, { target: { valueAsNumber: 4 } });
 
     expect(nameInput).toHaveValue("Tokugawa");
@@ -54,31 +42,22 @@ describe("WaitlistForm Component", () => {
   });
 
   it("submits the form and calls the API with correct data", async () => {
-    const mockFetch = fetch as Mock;
-    mockFetch.mockResolvedValueOnce({
-      json: async () => ({ success: true, message: "Added to waitlist" }),
-    } as Response);
+    const addToWaitlistMock = vi
+      .spyOn(waitlistService, "addToWaitlist")
+      .mockImplementation(() => undefined as unknown as Promise<WaitlistParty>);
 
     renderWithRecoil(<WaitlistForm />);
 
     const nameInput = screen.getByLabelText("Name");
     const partySizeInput = screen.getByLabelText("Party Size");
     const submitButton = screen.getByText("Submit");
-
-    fireEvent.change(nameInput, {target: {value: "Tokugawa"}})
+    fireEvent.change(nameInput, { target: { value: "Tokugawa" } });
     fireEvent.change(partySizeInput, { target: { valueAsNumber: 5 } });
     fireEvent.click(submitButton);
-
-    expect(mockFetch).toHaveBeenCalledWith(`${API_BASE_URL}/waitlist`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        name: "Tokugawa",
-        party_size: 5,
-        user_id: mockUserId,
-      }),
-    });
+    expect(addToWaitlistMock).toHaveBeenCalledWith(
+      "Tokugawa",
+      5,
+      "mock-user-id"
+    );
   });
 });
