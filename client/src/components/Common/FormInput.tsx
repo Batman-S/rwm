@@ -8,6 +8,8 @@ interface FormInputProps {
   onChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
   required: boolean;
   className?: string;
+  min?: number;
+  max?: number;
 }
 
 const FormInput = ({
@@ -18,6 +20,8 @@ const FormInput = ({
   label,
   id,
   className,
+  min,
+  max,
 }: FormInputProps) => {
   return (
     <div className="flex flex-col gap-2">
@@ -32,6 +36,8 @@ const FormInput = ({
         value={value}
         onChange={onChange}
         required={required}
+        min={min}
+        max={max}
       />
     </div>
   );

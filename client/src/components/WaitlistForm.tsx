@@ -35,6 +35,8 @@ const WaitlistForm = () => {
               className="w-20"
               required
               value={partySize}
+              min={1}
+              max={10}
               onChange={(e) => setPartySize(e.target.valueAsNumber)}
             />
             <div className="pt-4">
