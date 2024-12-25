@@ -1,0 +1,41 @@
+name: Backend CI
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+  workflow_dispatch: 
+
+jobs:
+  backend-tests:
+    name: Run Backend Tests
+    runs-on: ubuntu-latest
+
+    services:
+      docker:
+        image: docker:20.10.24
+        options: --privileged
+
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v3
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: 3.13
+
+      - name: Install dependencies
+        run: |
+          python -m venv venv
+          source venv/bin/activate
+          pip install --upgrade pip
+          pip install -r backend/requirements.txt
+
+      - name: Run e2e tests
+        env: 
+          PYTHONPATH: ${{ github.workspace }}/backend
+        run: |
+          source venv/bin/activate
+          python -m pytest backend/app/tests/
