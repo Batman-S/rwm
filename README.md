@@ -28,25 +28,36 @@ To start the entire project, including the frontend, backend, and required servi
 
 ### **2. Running Tests**
 #### Backend Tests
-1. Ensure you have python **venv** installed.
-2. Activate venv:
-```bash
-   source path/to/venv/bin/activate
-   ```
-3. Navigate to the backend folder:
+1. Navigate to the backend folder:
  ```bash
    cd rwm/backend
    ```
-4. Run the backend tests
+2. Setup venv:
 ```bash
-   pytest
+   python3 -m venv .venv
+   ```
+3. Activate venv:
+```bash
+   source .venv/bin/activate
+   ```
+3. Install dependencies:
+```bash
+   pip install -r requirements.txt
+   ```
+4. Run the backend tests:
+```bash
+   pytyon -m pytest
    ```
 #### Frontend Tests
 1. Navigate to the frontend folder:
  ```bash
    cd rwm/client
    ```
-2. Run the backend tests
+2. Install dependencies:
+ ```bash
+   yarn install
+   ```
+3. Run the frontend tests
 ```bash
    yarn test
    ```
