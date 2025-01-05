@@ -9,16 +9,23 @@ export enum PartyStatus {
   Completed = "completed",
 }
 
+// TODO: Add more robust user session management
 const getOrCreateUserId = (): string => {
-  const storedUserId = localStorage.getItem("userId");
+  const storedUserId = localStorage.getItem("userWaitlistId");
   if (storedUserId) {
-    return storedUserId;
+    const parsedUserId = JSON.parse(storedUserId);
+    if (parsedUserId.expiry > Date.now()) {
+      return parsedUserId.id;
+    }
   }
-  const newUserId = uuidv4();
-  localStorage.setItem("userId", newUserId);
-  return newUserId;
-};
+  const newUserId = {
+    id: uuidv4(),
+    expiry: Date.now() + 2 * 60 * 60 * 1000, // 2 hours
+  };
 
+  localStorage.setItem("userWaitlistId", JSON.stringify(newUserId));
+  return newUserId.id;
+};
 export const partyStatus = atom<string | null>({
   key: "partyStatusAtom",
   default: null,
