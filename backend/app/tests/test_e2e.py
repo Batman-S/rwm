@@ -8,9 +8,11 @@ from testcontainers.mongodb import MongoDbContainer
 from testcontainers.redis import RedisContainer
 from testcontainers.core.container import DockerContainer
 import logging
+
 logging.basicConfig(level=logging.INFO)
 DockerContainer.DEFAULT_LOG_LEVEL = logging.DEBUG
 from app.config import settings
+
 
 @pytest.fixture(scope="session")
 async def setup_containers():
@@ -19,40 +21,45 @@ async def setup_containers():
     """
     with MongoDbContainer() as mongo, RedisContainer() as redis:
         mongo_url = mongo.get_connection_url()
-        redis_url = f"redis://{redis.get_container_host_ip()}:{redis.get_exposed_port(6379)}"
+        redis_url = (
+            f"redis://{redis.get_container_host_ip()}:{redis.get_exposed_port(6379)}"
+        )
 
         settings.MONGO_URI = mongo_url
         settings.REDIS_URL = redis_url
 
         from app.database import db_manager
         from app.redis_client import redis_manager
-    
+
         await db_manager.close()
         await redis_manager.close()
-        
+
         db_manager._client = None
         redis_manager._redis = None
-        
+
         db_manager._uri = mongo_url
         redis_manager._redis_url = redis_url
-        
+
         await db_manager.connect()
-        await redis_manager.connect() 
+        await redis_manager.connect()
 
         yield
-        
-      
+
+
 @pytest.fixture(scope="function")
 async def client():
     """
     Provides an async TestClient instance for the test function.
-    
+
     """
     async with LifespanManager(client_app) as manager:
-        async with AsyncClient(transport=ASGITransport(app=manager.app), base_url="http://testserver") as client:
+        async with AsyncClient(
+            transport=ASGITransport(app=manager.app), base_url="http://testserver"
+        ) as client:
             yield client
-               
-@pytest.mark.usefixtures("setup_containers")     
+
+
+@pytest.mark.usefixtures("setup_containers")
 @pytest.mark.asyncio
 async def test_full_waitlist_flow_for_multiple_users(client):
     """
@@ -67,7 +74,7 @@ async def test_full_waitlist_flow_for_multiple_users(client):
             "name": f"Test Party {user_id}",
             "party_size": party_sizes[i],
             "user_id": user_id,
-            "created_at": datetime.now(timezone.utc).isoformat()
+            "created_at": datetime.now(timezone.utc).isoformat(),
         }
         parties.append(payload)
         response = await client.post("/api/v1/waitlist", json=payload)
@@ -77,9 +84,15 @@ async def test_full_waitlist_flow_for_multiple_users(client):
         assert data["party"]["party_size"] == party_sizes[i]
         assert data["party"]["status"] == "waiting"
 
-    sorted_parties = sorted(parties, key=lambda x: x['created_at'])
-    ready_parties = [(sorted_parties[i]['user_id'], sorted_parties[i]['party_size']) for i in range(2)]
-    waiting_parties = [(sorted_parties[i]['user_id'], sorted_parties[i]['party_size']) for i in range(2, len(sorted_parties))]
+    sorted_parties = sorted(parties, key=lambda x: x["created_at"])
+    ready_parties = [
+        (sorted_parties[i]["user_id"], sorted_parties[i]["party_size"])
+        for i in range(2)
+    ]
+    waiting_parties = [
+        (sorted_parties[i]["user_id"], sorted_parties[i]["party_size"])
+        for i in range(2, len(sorted_parties))
+    ]
 
     async def check_in_parties(parties):
         total_diners = 0

@@ -6,6 +6,7 @@ from typing import Optional
 
 logger = logging.getLogger("DB")
 
+
 class MongoDBManager:
     def __init__(self, uri: str, db_name: str):
         self._uri = uri
@@ -26,7 +27,7 @@ class MongoDBManager:
     async def close(self) -> None:
         if self._client:
             self._client.close()
-            self._client = None 
+            self._client = None
             self._db = None
             logger.info("DB connection closed.")
 
@@ -35,7 +36,9 @@ class MongoDBManager:
             raise RuntimeError("Database is not initialized")
         return self._db[name]
 
+
 db_manager = MongoDBManager(uri=settings.MONGO_URI, db_name=settings.DB_NAME)
+
 
 # Dependency injections
 async def get_collection(collection_name: str) -> Collection:

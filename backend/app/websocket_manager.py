@@ -1,11 +1,13 @@
 from typing import Dict, List
 import logging
+
 logger = logging.getLogger("WebSocketManager")
+
 
 class WebSocketManager:
     def __init__(self):
         # Stores list of SIDs
-        self.user_connections: Dict[str, List[str]] = {} 
+        self.user_connections: Dict[str, List[str]] = {}
 
     async def save_user_connection(self, sio, sid: str, user_id: str):
         """
@@ -39,5 +41,6 @@ class WebSocketManager:
                     logger.info(f"Message sent to user {user_id}: {message}")
                 except Exception as e:
                     logger.error(f"Failed to send message to user {user_id}: {e}")
+
 
 websocket_manager = WebSocketManager()

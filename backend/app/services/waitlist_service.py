@@ -7,6 +7,8 @@ from fastapi import HTTPException
 from datetime import datetime, timezone
 import asyncio
 import logging
+from typing import Dict, Any
+
 logger = logging.getLogger("WaitlistService")
 
 
@@ -15,6 +17,22 @@ class WaitlistService:
     Service layer for handling the waitlist workflow, including adding parties,
     checking readiness, and managing check-ins.
     """
+    
+    @staticmethod
+    def validate_party_size(party_size: int) -> None:
+        """
+        Validate party size.
+        
+        Args:
+            party_size: Number of people in party
+        Raises:
+            HTTPException: If validation fails
+        """
+        if party_size < 1 or party_size > 10:
+            raise HTTPException(
+                status_code=400,
+                detail="Party size must be between 1 and 10"
+            )
     
     @staticmethod
     async def get_party_status(user_id: str):
@@ -34,15 +52,17 @@ class WaitlistService:
             raise HTTPException(status_code=500, detail="Internal server error")
 
     @staticmethod
-    async def add_to_waitlist(name: str, party_size: int, user_id: str):
-        """
-        Add a new party to the waitlist and trigger a readiness check.
-        """
+    async def add_to_waitlist(name: str, party_size: int, user_id: str) -> Dict[str, Any]:
+        """Add a new entry to the waitlist."""
+        
+        # Validate party size
+        WaitlistService.validate_party_size(party_size)
+        
         try:
             collection = await get_collection("waitlist")
             new_party = {
                 "_id": user_id,
-                "name": name,
+                "name": name.strip(),
                 "party_size": party_size,
                 "status": "waiting",
                 "created_at": datetime.now(timezone.utc).isoformat(),
@@ -55,7 +75,7 @@ class WaitlistService:
             logger.error(f"Error adding party to waitlist: {e}")
             raise HTTPException(status_code=500, detail="Internal server error")
         finally:
-            # Trigger readiness check outside of scheduler for immediate feedback alongside the periodic checks.
+            # Trigger readiness check outside of scheduler for immediate feedback
             await WaitlistService.check_queue_readiness()
             
 
@@ -75,18 +95,33 @@ class WaitlistService:
             collection = await get_collection("waitlist")
             redis_client = await get_redis_client()
             available_seats = await SeatManagementService.get_available_seats(redis_client)
-            next_party = await collection.find_one({"status": "waiting"}, sort=[("created_at", 1)])
-            if next_party and available_seats < next_party["party_size"]:
-                await WebSocketService.notify_party_status(next_party["_id"], next_party, "waiting")
+            logger.info(f"Available seats: {available_seats}")
             
-            if next_party and available_seats >= next_party["party_size"]:
-                # Mark the party as ready and notify
-                updated_party = await collection.find_one_and_update({"_id": next_party["_id"]},{"$set": {"status": "ready"}},return_document=True)
-                await SeatManagementService.decrement_available_seats(redis_client, next_party["party_size"])
-                await WebSocketService.notify_party_status(next_party["_id"], updated_party, "ready")
-                logger.info(f"Party {next_party['_id']} notified as ready.")
+            next_party = await collection.find_one({"status": "waiting"}, sort=[("created_at", 1)])
+            if not next_party:
+                logger.info("No parties waiting in queue.")
+                return
+                
+            logger.info(f"Next party in queue: {next_party['_id']} (size: {next_party['party_size']})")
+            
+            if available_seats < next_party["party_size"]:
+                logger.info(f"Insufficient seats for party {next_party['_id']}. Required: {next_party['party_size']}, Available: {available_seats}")
+                await WebSocketService.notify_party_status(next_party["_id"], next_party, "waiting")
+                return
+            
+            # Mark the party as ready and notify
+            updated_party = await collection.find_one_and_update(
+                {"_id": next_party["_id"]},
+                {"$set": {"status": "ready"}},
+                return_document=True
+            )
+            await SeatManagementService.decrement_available_seats(redis_client, next_party["party_size"])
+            await WebSocketService.notify_party_status(next_party["_id"], updated_party, "ready")
+            logger.info(f"Party {next_party['_id']} marked as ready and notified.")
+            
         except Exception as e:
-            logger.error(f"Error during readiness check: {e}")
+            logger.error(f"Error during readiness check: {str(e)}", exc_info=True)
+            raise HTTPException(status_code=500, detail="Failed to check queue readiness")
         finally:
             await SeatManagementService.release_seats_lock(redis_client)
 

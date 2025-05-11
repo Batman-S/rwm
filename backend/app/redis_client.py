@@ -5,6 +5,7 @@ import logging
 
 logger = logging.getLogger("RedisManager")
 
+
 class RedisManager:
     def __init__(self, redis_url: str):
         self._redis_url = redis_url
@@ -13,9 +14,7 @@ class RedisManager:
     async def connect(self):
         if self._redis is None:
             try:
-                self._redis = aioredis.from_url(
-                    self._redis_url, decode_responses=True
-                )
+                self._redis = aioredis.from_url(self._redis_url, decode_responses=True)
                 logger.info("Connected to Redis.")
             except Exception as e:
                 logger.error(f"Failed to connect to Redis: {str(e)}")
@@ -34,7 +33,9 @@ class RedisManager:
             await self.connect()
         return self._redis
 
+
 redis_manager = RedisManager(settings.REDIS_URL)
+
 
 # Dependency Injection
 async def get_redis_client() -> Redis:

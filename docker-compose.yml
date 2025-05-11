@@ -1,4 +1,3 @@
-version: '3.8'
 
 services:
   client:
@@ -46,7 +45,16 @@ services:
     image: redis:latest
     ports:
       - "6380:6379" 
-    command: ["redis-server", "--loglevel", "warning", "--logfile", "/dev/null"] 
+    volumes:
+      - redis-data:/data
+    command: [
+      "redis-server",
+      "--appendonly", "yes",
+      "--appendfilename", "appendonly.aof",
+      "--loglevel", "warning",
+      "--logfile", "/dev/null"
+    ] 
 
 volumes:
   mongo-data:
+  redis-data:

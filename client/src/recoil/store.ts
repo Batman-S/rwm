@@ -47,7 +47,6 @@ export const partyStatusSelector = selector<Promise<PartyStatus | null>>({
     }
   },
 });
-
 export const userIdState = atom<string>({
   key: "userIdState",
   default: getOrCreateUserId(),

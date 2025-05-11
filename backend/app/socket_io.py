@@ -4,6 +4,7 @@ import logging
 
 logger = logging.getLogger("SocketIO")
 
+
 async def setup_socketio_events(sio):
     """
     Register Socket.IO events with the given Socket.IO server instance.
@@ -12,7 +13,7 @@ async def setup_socketio_events(sio):
     @sio.event
     async def connect(sid, environ):
         query_string = environ.get("QUERY_STRING", "")
-        query_params = parse_qs(query_string) 
+        query_params = parse_qs(query_string)
         user_id = None
         user_id = query_params.get("userId", [None])[0]
 
@@ -31,4 +32,3 @@ async def setup_socketio_events(sio):
     @sio.event
     async def user_message(sid, data):
         logger.info(f"Message from SID={sid}: {data}")
-    

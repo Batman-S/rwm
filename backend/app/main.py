@@ -17,6 +17,8 @@ logging.basicConfig(
 logger = logging.getLogger("WaitlistApp")
 
 scheduler = AsyncIOScheduler()
+
+
 def setup_scheduler():
     """
     Setup the scheduler for periodic tasks.
@@ -31,7 +33,8 @@ def setup_scheduler():
     )
     loop = asyncio.get_event_loop()
     if loop.is_running():
-        loop.create_task(start_scheduler()) 
+        loop.create_task(start_scheduler())
+
 
 async def start_scheduler():
     """
@@ -39,6 +42,7 @@ async def start_scheduler():
     """
     scheduler.start()
     logger.info("Scheduler started with job: check_queue_readiness")
+
 
 @asynccontextmanager
 async def app_lifespan(app: FastAPI):
@@ -50,17 +54,19 @@ async def app_lifespan(app: FastAPI):
         await db_manager.connect()
         await setup_socketio_events(sio)
 
-        # Initialize seats in Redis on app start. TODO: Save available seats to disk
+        # Initialize seats in Redis on app start
         redis_client = await get_redis_client()
-        await redis_client.set("available_seats", 10)
-        logger.info("Initialized available_seats to 10 in Redis")
-            
+        from app.services.seat_management_service import SeatManagementService
+
+        await SeatManagementService.initialize_seats(redis_client)
+
         setup_scheduler()
         yield
     finally:
         logger.info("Shutting down Waitlist Manager API...")
-        scheduler.shutdown()  
-        await db_manager.close() 
+        scheduler.shutdown()
+        await db_manager.close()
+
 
 app = FastAPI(
     title="Waitlist Manager API",
